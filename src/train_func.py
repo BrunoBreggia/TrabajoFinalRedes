@@ -75,7 +75,7 @@ def train_autoencoder_with_hyperparameters(
                     val_dataloader=val_loader,
                     early_stopping_patience=None)
 
-    trainer.fit(max_epochs=5, verbose=True)
+    trainer.fit(max_epochs=100, verbose=True)
     save_model(model.encoder, dir_path)
 
 if __name__=="__main__":
