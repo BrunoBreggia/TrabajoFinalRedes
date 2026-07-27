@@ -90,6 +90,7 @@ class UpsampleBlock(nn.Module):
         self.spatial_dropout = nn.Dropout2d(p=dropout_rate)
 
     def forward(self, x):
+        #print(f"Size before Upsampler:{x.shape}")
         # 1. Spatial Resize (learnable)
         x = self.deconv(x)
 
@@ -104,6 +105,7 @@ class UpsampleBlock(nn.Module):
 
         # 5. Regularization (Spatial Dropout)
         x = self.spatial_dropout(x)
+        #print(f"Size after Upsampler:{x.shape}")
         return x
 
 class DownsampleBlock(nn.Module):
@@ -111,13 +113,11 @@ class DownsampleBlock(nn.Module):
         super().__init__()
 
         # Error if kernel size is odd
+        assert kernel_size > 1, "Kernel size must be larger than 1"
         assert kernel_size % 2 == 1, "Kernel size must be odd"
 
-        # flags
-        self.pool = pool
-
         # layers
-        pad = (kernel_size-1)//2 # padding so that dimension doesnt change in this layer, downsamplig occurs in pool layer
+        pad = (kernel_size-3)//2 # padding so that dimension is reduced by 2
         self.conv = nn.Conv2d(in_channels, out_channels, 
                               kernel_size=kernel_size, 
                               padding=pad,
@@ -126,9 +126,13 @@ class DownsampleBlock(nn.Module):
         self.relu = nn.ReLU()
         self.batch_norm = nn.BatchNorm2d(out_channels) # matches out_channels of the Conv layer
         self.spatial_dropout = nn.Dropout2d(p=dropout_rate)  # low rate for CNN layers, like 0.2
-        self.pool = nn.MaxPool2d(kernel_size=3, stride=1) # decrements matrix dimension by 2
+        self.pool = None
+        if pool:
+            self.pool = nn.MaxPool2d(kernel_size=3, stride=1) # decrements matrix dimension by 2
+        
     
     def forward(self, x):
+        #print(f"Size before Downsampler:{x.shape}")
         # 1. The Convolutional Layer
         x = self.conv(x)
 
@@ -144,5 +148,5 @@ class DownsampleBlock(nn.Module):
         # 5. Pooling Layer
         if self.pool:
             x = self.pool(x)
-
+        #print(f"Size after Downsampler:{x.shape}")
         return x

@@ -3,6 +3,8 @@ from torch import nn
 from torchvision import datasets, transforms
 from torchvision.datasets import FashionMNIST
 from torch.utils.data import DataLoader, random_split
+from torch.utils.tensorboard import SummaryWriter
+
 
 from pathlib import Path
 import sys
@@ -14,10 +16,11 @@ if parent_dir not in sys.path:
 
 from src.modulos import Autoencoder
 from src.dataset import fashion_dataset
-from src.utils import Trainer, save_model
+from src.utils import TrainerEncoder, save_model
 
 def train_autoencoder_with_hyperparameters(
         dir_path:str,
+        tensorboard=None,
         layers:int=3,
         channels_sizes:tuple=((1,2),(2,4),(4,8)),
         kernel_sizes:tuple=(3,3,3),
@@ -64,8 +67,8 @@ def train_autoencoder_with_hyperparameters(
     elif optimizer.lower() == "adamw":
         optim = torch.optim.AdamW(model.parameters(),lr=learning_rate,weight_decay=1e-2)
     loss_func = nn.MSELoss()
-    trainer = Trainer(model=model,
-                    model_type="autoencoder",
+    trainer = TrainerEncoder(model=model,
+                    tensorboard=tensorboard,
                     train_dataloader=train_loader,
                     optimizer=optim,
                     loss_criterion=loss_func,
@@ -73,7 +76,8 @@ def train_autoencoder_with_hyperparameters(
                     early_stopping_patience=None)
 
     trainer.fit(max_epochs=5, verbose=True)
-    save_model(model, dir_path)
+    save_model(model.encoder, dir_path)
 
 if __name__=="__main__":
-    train_autoencoder_with_hyperparameters(dir_path="weights/exp1")
+    writer = SummaryWriter("runs/trial02")
+    train_autoencoder_with_hyperparameters(dir_path="weights/exp1", tensorboard=writer)

@@ -1,13 +1,16 @@
 import torch
 from torch import nn
-from torchvision import datasets, transforms
+from torchvision import transforms
 from torchvision.datasets import FashionMNIST
 from torch.utils.data import DataLoader, random_split
 from pathlib import Path
 
 from src.modulos import Autoencoder
 from src.dataset import fashion_dataset
-from src.utils import Trainer, save_model
+from src.utils import TrainerEncoder, save_model
+
+from torch.utils.tensorboard import SummaryWriter
+writer = SummaryWriter("runs/trial01")
 
 # Build model (autoencoder)
 model = Autoencoder(layers=3, 
@@ -47,13 +50,13 @@ lr = 0.01
 optim = torch.optim.Adam(model.parameters(), lr=lr)
 loss_func = nn.MSELoss()
 
-trainer = Trainer(model=model,
-                  model_type="autoencoder",
-                  train_dataloader=train_loader,
-                  optimizer=optim,
-                  loss_criterion=loss_func,
-                  val_dataloader=val_loader,
-                  early_stopping_patience=None)
+trainer = TrainerEncoder(model=model,
+                         tensorboard=writer,
+                         train_dataloader=train_loader,
+                         optimizer=optim,
+                         loss_criterion=loss_func,
+                         val_dataloader=val_loader,
+                         early_stopping_patience=None)
 
 trainer.fit(max_epochs=5, verbose=True)
-save_model(model, Path("weights/"))
+save_model(model.encoder, Path("weights/trial_01"))
