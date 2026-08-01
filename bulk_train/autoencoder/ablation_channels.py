@@ -11,19 +11,24 @@ from torch.utils.tensorboard import SummaryWriter
 
 
 if __name__=="__main__":
-    head_dir= Path("weights/autoencoder/channels")
+    head_dir= Path("weights/autoencoder/channel")
 
     train_autoencoder_with_hyperparameters(
-        head_dir/"constant", 
-        tensorboard=SummaryWriter(f"runs/autoencoder/channels/constant"),
-        channels_sizes=[(1,1),(1,1),(1,1)])
+        head_dir/"large", 
+        tensorboard=SummaryWriter(f"runs/autoencoder/channels/large"),
+        channels_sizes=[(1,32),(32,8)])
     
     train_autoencoder_with_hyperparameters(
-        head_dir/"linear_increment", 
-        tensorboard=SummaryWriter(f"runs/autoencoder/channels/linear_increment"),
-        channels_sizes=[(1,2),(2,3),(3,4)])
+        head_dir/"medium", 
+        tensorboard=SummaryWriter(f"runs/autoencoder/channels/medium"),
+        channels_sizes=[(1,16),(16,8)])
     
     train_autoencoder_with_hyperparameters(
-        head_dir/"exp_increment", 
-        tensorboard=SummaryWriter(f"runs/autoencoder/channels/exp_increment"),
-        channels_sizes=[(1,2),(2,4),(4,8)])
+        head_dir/"small", 
+        tensorboard=SummaryWriter(f"runs/autoencoder/channels/small"),
+        channels_sizes=[(1,8),(8,8)])
+    
+    train_autoencoder_with_hyperparameters(
+        head_dir/"bottleneck", 
+        tensorboard=SummaryWriter(f"runs/autoencoder/channels/bottleneck"),
+        channels_sizes=[(1,4),(4,8)])

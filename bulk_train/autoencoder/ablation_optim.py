@@ -15,19 +15,35 @@ if __name__=="__main__":
     train_autoencoder_with_hyperparameters(
         head_dir/"sgd", 
         tensorboard=SummaryWriter(f"runs/autoencoder/optim/sgd"),
+        channels_sizes=[(1,16), (16,8)], # medium size
+        learning_rate=0.1,
+        kernel_sizes=[7,7],
+        dropout_rate=0.0,
         optimizer="sgd")
 
     train_autoencoder_with_hyperparameters(
         head_dir/"sgd_nesterov", 
         tensorboard=SummaryWriter(f"runs/autoencoder/optim/sgd_nesterov"),
+        channels_sizes=[(1,16), (16,8)], # medium size
+        learning_rate=0.1,
+        kernel_sizes=[7,7],
+        dropout_rate=0.0,
         optimizer="sgd nesterov")
 
     train_autoencoder_with_hyperparameters(
         head_dir/"adam", 
         tensorboard=SummaryWriter(f"runs/autoencoder/optim/adam"),
+        channels_sizes=[(1,16), (16,8)], # medium size
+        learning_rate=0.1,
+        kernel_sizes=[7,7],
+        dropout_rate=0.0,
         optimizer="adam")
 
     train_autoencoder_with_hyperparameters(
         head_dir/"adamw", 
         tensorboard=SummaryWriter(f"runs/autoencoder/optim/adamw"),
+        channels_sizes=[(1,16), (16,8)], # medium size
+        learning_rate=0.1,
+        kernel_sizes=[7,7],
+        dropout_rate=0.0,
         optimizer="adamw")

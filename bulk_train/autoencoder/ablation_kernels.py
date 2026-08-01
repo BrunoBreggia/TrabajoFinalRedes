@@ -15,19 +15,23 @@ if __name__=="__main__":
     train_autoencoder_with_hyperparameters(
         head_dir/"least", 
         tensorboard=SummaryWriter(f"runs/autoencoder/kernels/least"),
-        kernel_sizes=[3,3,3])
+        channels_sizes=[(1,16), (16,8)], # medium size
+        kernel_sizes=[3,3])
 
     train_autoencoder_with_hyperparameters(
         head_dir/"most", 
         tensorboard=SummaryWriter(f"runs/autoencoder/kernels/most"),
-        kernel_sizes=[7,7,7])
+        channels_sizes=[(1,16), (16,8)], # medium size
+        kernel_sizes=[7,7])
     
     train_autoencoder_with_hyperparameters(
         head_dir/"incremental", 
         tensorboard=SummaryWriter(f"runs/autoencoder/kernels/incremental"),
-        kernel_sizes=[3,5,7])
+        channels_sizes=[(1,16), (16,8)], # medium size
+        kernel_sizes=[3,7])
 
     train_autoencoder_with_hyperparameters(
         head_dir/"deremental", 
         tensorboard=SummaryWriter(f"runs/autoencoder/kernels/decremental"),
-        kernel_sizes=[7,5,3])
+        channels_sizes=[(1,16), (16,8)], # medium size
+        kernel_sizes=[7,3])

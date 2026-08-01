@@ -1,6 +1,9 @@
 import torch
 from torch import nn
 from torch.optim import Optimizer
+import matplotlib.pyplot as plt
+from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay
+
 from pathlib import Path
 import json
 from tqdm import tqdm
@@ -42,6 +45,7 @@ class TrainerEncoder:
             examples = iter(self.train_dataloader)
             samples, labels = next(examples)
             self.writer.add_graph(model, samples.reshape(-1, 1, 28, 28).to(self.device))
+            self.writer.flush() 
         ####################################################################
 
     def fit(self, max_epochs:int, verbose:bool=False, save_best_dir:Path|None=None):
@@ -72,7 +76,9 @@ class TrainerEncoder:
             print(f"Época {epoch+1}/{max_epochs} — Pérdida de entrenamiento: {avg_epoch_loss:.4f}")
 
             ############## LOG TO TENSORBOARD ##############
-            self.writer.add_scalar('avg epoch loss (train)', avg_epoch_loss, epoch)
+            if self.writer:
+                self.writer.add_scalar('avg epoch loss (train)', avg_epoch_loss, epoch)
+                self.writer.flush() 
             ################################################
 
             if self.val_dataloader:
@@ -80,7 +86,9 @@ class TrainerEncoder:
                 self.validation_losses.append(val_loss)
 
                 ############## LOG TO TENSORBOARD ##############
-                self.writer.add_scalar('avg epoch loss (val)', val_loss, epoch)
+                if self.writer:
+                    self.writer.add_scalar('avg epoch loss (val)', val_loss, epoch)
+                    self.writer.flush() 
                 ################################################
 
                 if val_loss < self.best_validation_loss:
@@ -97,6 +105,7 @@ class TrainerEncoder:
                 ):
                     print(f"Se detuvo el entrenamiento anticipadamente en la época {epoch+1} (sin mejoras por {self.early_stopping_patience} épocas).")
                     break
+        self.writer.close()
                 
 
     def validate(self) -> tuple[float, float]:
@@ -132,7 +141,8 @@ class TrainerClassifier:
         loss_criterion: nn.Module,
         val_dataloader: torch.utils.data.DataLoader = None,
         device: str | None = None,
-        early_stopping_patience: int | None = 10):
+        early_stopping_patience: int | None = 10,
+        tensorboard=None):
 
         if device is None:
             device = "cuda" if torch.cuda.is_available() else "cpu"
@@ -154,6 +164,15 @@ class TrainerClassifier:
         self.best_model_state = None
         self.epochs_without_improvement = 0
 
+        self.writer = tensorboard
+        ######################## LOG TO TENSORBOARD ########################
+        if self.writer:
+            examples = iter(self.train_dataloader)
+            samples, labels = next(examples)
+            self.writer.add_graph(model, samples.reshape(-1, 1, 28, 28).to(self.device))
+            self.writer.flush() 
+        ####################################################################
+
     def fit(self, max_epochs:int, verbose:bool=False, save_best_dir:Path|None=None):
         for epoch in range(max_epochs):
             self.model.train()
@@ -163,6 +182,8 @@ class TrainerClassifier:
                 train_loader = tqdm(self.train_dataloader)
             else:
                 train_loader = self.train_dataloader
+
+            correct, total = 0, 0
 
             for inputs, targets in train_loader:
                 inputs = inputs.to(self.device)
@@ -176,15 +197,37 @@ class TrainerClassifier:
 
                 epoch_loss += loss.item()
 
+                # calculate accuracy in training set
+                predicted = outputs.argmax(dim=1)
+                targets = targets.argmax(dim=1)
+                correct += (predicted == targets).sum().item()
+                total += targets.size(0)
+
             avg_epoch_loss = epoch_loss / len(self.train_dataloader)
             self.training_losses.append(avg_epoch_loss)
 
+            train_acc = correct / total if total > 0 else 0.0
+
             print(f"Época {epoch+1}/{max_epochs} — Pérdida de entrenamiento: {avg_epoch_loss:.4f}")
+
+            ############## LOG TO TENSORBOARD ##############
+            if self.writer:
+                self.writer.add_scalar('avg epoch loss (train)', avg_epoch_loss, epoch)
+                self.writer.add_scalar('avg accuracy (train)', train_acc, epoch)
+                self.writer.flush()
+            ################################################
 
             if self.val_dataloader:
                 val_loss, val_acc = self.validate()
                 self.validation_losses.append(val_loss)
                 self.validation_accuracies.append(val_acc)
+
+                ############## LOG TO TENSORBOARD ##############
+                if self.writer:
+                    self.writer.add_scalar('avg epoch loss (val)', val_loss, epoch)
+                    self.writer.add_scalar('avg accuracy (val)', val_acc, epoch)
+                    self.writer.flush() 
+                ################################################
 
                 if val_loss < self.best_validation_loss:
                     self.best_validation_loss = val_loss
@@ -233,6 +276,48 @@ class TrainerClassifier:
             model_path = save_to/"best_model.pth"
             torch.save(self.model.state_dict(), model_path)
         
+    def test(self, test_dataloader, verbose:bool=False, confusionMat_dir=None):
+        # Lists to accumulate all true and predicted labels
+        all_targets = []
+        all_predictions = []
+
+        self.model.to(self.device)
+        self.model.eval()
+        with torch.no_grad():
+            for inputs, targets in test_dataloader:
+                inputs = inputs.to(self.device)
+                targets = targets.to(self.device)
+                
+                # Forward pass
+                logits = self.model(inputs)
+                _, predictions = torch.max(logits, dim=1)
+
+                if len(targets.shape) > 1 and targets.shape[1] > 1:
+                    targets = torch.argmax(targets, dim=1)
+                
+                # Move to CPU and convert to lists/numpy for scikit-learn
+                all_targets.extend(targets.cpu().numpy())
+                all_predictions.extend(predictions.cpu().numpy())
+        
+        if confusionMat_dir:
+            # Generate the confusion matrix array
+            cm = confusion_matrix(all_targets, all_predictions)
+
+            # Define class names
+            class_names = [
+                "T-shirt/top", "Trouser", "Pullover", "Dress", "Coat",
+                "Sandal", "Shirt", "Sneaker", "Bag", "Ankle boot"
+            ]
+
+            plt.figure(figsize=(10, 8))
+            disp = ConfusionMatrixDisplay(confusion_matrix=cm, display_labels=class_names)
+
+            # Render with a clean color map and rotate labels for readability
+            disp.plot(cmap=plt.cm.Blues, xticks_rotation=45)
+            plt.title("Confusion Matrix (fashion mnist)")
+            plt.tight_layout()
+            plt.savefig(confusionMat_dir/"confusion_matrix.png")
+
 def save_model(model, save_directory:Path):
     save_directory.mkdir(parents=True, exist_ok=True)
     # save configuration
